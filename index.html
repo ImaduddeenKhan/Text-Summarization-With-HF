@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Summarization System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      /* Common */
+      --radius: 14px;
+      --muted: #93a4b6;
+      --glass-border: rgba(255,255,255,0.04);
+      --glass-weak: rgba(255,255,255,0.02);
+      --accent-1: #7c3aed;
+      --accent-2: #06b6d4;
+      --transition-fast: 140ms;
+      --transition-med: 240ms;
+    }
+
+    /* Night theme (default) */
+    :root[data-theme="dark"]{
+      --bg-1: #05060b;
+      --bg-2: #071024;
+      --card-bg: rgba(14,18,28,0.55);
+      --text-main: #eaf6ff;
+      --muted: #93a4b6;
+      --input-bg: rgba(255,255,255,0.02);
+      --border: rgba(255,255,255,0.03);
+      --shadow-strong: rgba(2,6,18,0.7);
+    }
+
+    /* Day theme */
+    :root[data-theme="light"]{
+      --bg-1: #f5f7fb;
+      --bg-2: #e8eef7;
+      --card-bg: rgba(255,255,255,0.9);
+      --text-main: #0b1722;
+      --muted: #4b5563;
+      --input-bg: #ffffff;
+      --border: rgba(11,23,34,0.06);
+      --shadow-strong: rgba(17,24,39,0.06);
+      --accent-1: #4f46e5;
+      --accent-2: #06b6d4;
+    }
+
+    /* Reset & base */
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; font-family:"Inter",system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased;}
+    body{
+      --bg1: var(--bg-1);
+      --bg2: var(--bg-2);
+      background:
+        radial-gradient(700px 360px at 12% 10%, rgba(124,58,237,0.06), transparent 8%),
+        radial-gradient(640px 320px at 88% 88%, rgba(6,182,212,0.04), transparent 9%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      color: var(--text-main);
+      padding:36px;
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      gap:20px;
+    }
+
+    /* Stage + Sidebar layout */
+    .app {
+      width: min(1200px, 98%);
+      display:grid;
+      grid-template-columns: 320px 1fr;
+      gap:20px;
+      align-items:start;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 320px;
+      border-radius: var(--radius);
+      padding:18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+      border:1px solid var(--glass-border);
+      box-shadow: 0 10px 30px var(--shadow-strong);
+      backdrop-filter: blur(8px);
+      transition: transform var(--transition-med) cubic-bezier(.2,.9,.3,1), opacity var(--transition-med);
+      position:relative;
+    }
+
+    .sidebar.hidden {
+      transform: translateX(-14px) scale(.995);
+      opacity:0.0;
+      pointer-events:none;
+    }
+
+    .sidebar h4 { margin:0 0 8px 0; font-size:16px; color:var(--text-main); }
+    .sidebar p.lead { margin:0 0 12px 0; color:var(--muted); font-size:13px; }
+
+    .idea {
+      background: linear-gradient(180deg, rgba(255,255,255,0.006), rgba(255,255,255,0.004));
+      border-radius:10px;
+      padding:12px;
+      margin-bottom:10px;
+      border:1px solid rgba(255,255,255,0.02);
+      font-size:14px;
+      color:var(--text-main);
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .idea:hover{ transform: translateY(-4px); box-shadow: 0 10px 28px rgba(2,6,18,0.14); }
+
+    .idea small { display:block; color:var(--muted); margin-top:6px; font-size:12px; }
+
+    /* Toggler and sidebar controls */
+    .top-controls {
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:10px;
+    }
+
+    .toggle {
+      display:inline-flex;
+      gap:10px;
+      align-items:center;
+      background: linear-gradient(90deg,var(--accent-1),var(--accent-2));
+      padding:6px;
+      border-radius:999px;
+      color:white;
+      font-weight:700;
+      font-size:13px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .small-btn {
+      background:transparent;
+      border:1px solid var(--glass-border);
+      padding:8px 10px;
+      border-radius:10px;
+      color:var(--text-main);
+      cursor:pointer;
+      font-weight:600;
+      font-size:13px;
+    }
+
+    /* Main card (form) */
+    .card {
+      border-radius: var(--radius);
+      padding:28px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid var(--glass-border);
+      box-shadow: 0 20px 60px var(--shadow-strong);
+      backdrop-filter: blur(8px) saturate(120%);
+      transition: transform var(--transition-med) cubic-bezier(.2,.9,.3,1);
+    }
+    .card:hover{ transform: translateY(-6px); }
+
+    .head {
+      display:flex;
+      align-items:center;
+      gap:18px;
+      margin-bottom:18px;
+    }
+
+    .logo {
+      width:72px; height:72px; border-radius:14px;
+      display:grid; place-items:center; font-weight:800; font-size:28px; color:white;
+      background: linear-gradient(135deg,var(--accent-1),var(--accent-2));
+      box-shadow: 0 10px 30px rgba(7,12,24,0.6);
+    }
+
+    h1 {
+      margin:0;
+      font-size:36px; line-height:1; letter-spacing:-0.4px;
+      background: linear-gradient(90deg,var(--accent-1),var(--accent-2));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+
+    .subtitle { margin-top:6px; color:var(--muted); font-size:14px; }
+
+    form { margin-top:6px; display:flex; flex-direction:column; gap:14px; }
+
+    .input-area {
+      display:grid;
+      grid-template-columns: 1fr 200px;
+      gap:14px;
+    }
+
+    textarea {
+      width:100%;
+      min-height:280px;
+      padding:18px;
+      resize:vertical;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius:12px;
+      color: var(--text-main);
+      font-size:16px; line-height:1.6;
+      outline:none;
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+      transition: box-shadow var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast);
+      caret-color: var(--accent-2);
+    }
+    textarea::placeholder { color: rgba(0,0,0,0.22); /* placeholder color ok for light too */ }
+
+    /* Focus states tuned for both themes */
+    :root[data-theme="dark"] textarea::placeholder { color: rgba(230,238,248,0.32); }
+    textarea:focus{
+      box-shadow: 0 10px 36px rgba(7,12,24,0.5);
+      transform: translateY(-2px);
+      border-color: rgba(124,58,237,0.6);
+    }
+
+    .right-controls { display:flex; flex-direction:column; gap:12px; align-items:flex-end; }
+
+    .btn {
+      padding:12px 18px; border-radius:12px; font-weight:700; font-size:15px;
+      cursor:pointer; border:none; color:white;
+      background: linear-gradient(90deg,var(--accent-1),var(--accent-2));
+      box-shadow: 0 12px 28px rgba(7,12,24,0.6);
+      overflow:hidden; position:relative;
+    }
+    .btn:active{ transform: translateY(1px) scale(.995); }
+
+    .ripple { position:absolute; border-radius:50%; transform:scale(0); background: rgba(255,255,255,0.14); animation: ripple 700ms linear; pointer-events:none; }
+    @keyframes ripple { to { transform: scale(6); opacity:0; } }
+
+    .hint { color:var(--muted); font-size:13px; }
+
+    #summary-output {
+      margin-top:12px; padding:18px; border-radius:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.007));
+      border:1px solid var(--border);
+      color:var(--text-main); min-height:88px;
+      transition: transform var(--transition-med), opacity var(--transition-med);
+    }
+
+    #summary-output h3 { margin:0 0 8px 0; font-size:14px; color: var(--text-main); }
+    #summary-text { margin:0; white-space:pre-wrap; font-size:16px; line-height:1.6; color:var(--text-main); }
+
+    .spinner { width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.18); border-top-color:white; animation:spin .9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width:1100px){
+      .app { grid-template-columns: 260px 1fr; gap:12px; }
+      .sidebar { width:260px; }
+    }
+
+    @media (max-width:800px){
+      .app { grid-template-columns: 1fr; }
+      .sidebar { order:2; width:100%; display:block; }
+      .card { order:1; }
+      .input-area { grid-template-columns: 1fr; }
+      .right-controls { flex-direction:row; justify-content:space-between; align-items:center; }
+      textarea { min-height:200px; }
+    }
+
+    /* tiny helpers */
+    .muted { color:var(--muted); font-size:13px; }
+    .nowrap { white-space:nowrap; }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Summarization application">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar" aria-labelledby="ideas-title">
+      <div class="top-controls">
+        <div>
+          <h4 id="ideas-title">Search & Prompt Ideas</h4>
+          <p class="lead">Creative ways to search when you want better summaries or context</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="small-btn" id="toggle-sidebar-btn" aria-pressed="true" title="Hide sidebar">Hide</button>
+          <button class="small-btn" id="reset-theme-btn" title="Reset theme">Reset</button>
+        </div>
+      </div>
+
+      <!-- Creative idea cards -->
+      <div class="idea">
+        <strong>1. Search by role</strong>
+        <small>“Explain this dialogue as if you are a teacher / doctor / journalist.”</small>
+      </div>
+
+      <div class="idea">
+        <strong>2. Search by goal</strong>
+        <small>“Summarize focusing on action items / decisions / emotional tone.”</small>
+      </div>
+
+      <div class="idea">
+        <strong>3. Time-based summary</strong>
+        <small>“Short summary (1–2 lines) / Medium (3–5 lines) / Detailed (bullet points).”</small>
+      </div>
+
+      <div class="idea">
+        <strong>4. Ask for examples</strong>
+        <small>“Provide sample follow-up questions or clarifying prompts.”</small>
+      </div>
+
+      <div class="idea">
+        <strong>5. Combine sources</strong>
+        <small>“Summarize and compare with X (e.g., meeting notes, chat history).”</small>
+      </div>
+
+      <div class="idea" style="margin-top:8px">
+        <strong>Tip</strong>
+        <small>Press <kbd>Ctrl/Cmd + Enter</kbd> to submit quickly.</small>
+      </div>
+    </aside>
+
+    <!-- Main card and form -->
+    <main class="card" id="main-card" aria-labelledby="app-title">
+      <div class="head">
+        <div class="logo" aria-hidden="true">📃</div>
+        <div style="flex:1;min-width:0">
+          <h1 id="app-title">Text Summarization By Imad</h1>
+          <div class="subtitle">Copy & Paste Below.</div>
+        </div>
+
+        <!-- Theme toggle (keeps backend unaffected) -->
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <div id="theme-toggle" class="toggle" role="button" aria-pressed="false" tabindex="0" title="Toggle theme">
+            <span id="theme-icon">🌙</span>
+            <span id="theme-label">Night</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keep IDs: summarization-form and dialogue-input -->
+      <form id="summarization-form" autocomplete="off" novalidate>
+        <div class="input-area">
+          <textarea id="dialogue-input" placeholder="Enter your dialogue here..." required aria-label="Dialogue input"></textarea>
+
+          <div class="right-controls">
+            <div class="hint muted">Max length: server-side controlled</div>
+            <button class="btn" type="submit" aria-label="Summarize">
+              <span class="btn-text">Summarize</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="summary-output" role="status" aria-live="polite">
+          <h3>Summary:</h3>
+          <p id="summary-text"></p>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      /* ---------- Elements ---------- */
+      const root = document.documentElement;
+      const themeToggle = document.getElementById('theme-toggle');
+      const themeIcon = document.getElementById('theme-icon');
+      const themeLabel = document.getElementById('theme-label');
+      const resetThemeBtn = document.getElementById('reset-theme-btn');
+
+      const sidebar = document.getElementById('sidebar');
+      const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
+
+      const form = document.getElementById('summarization-form');
+      const textarea = document.getElementById('dialogue-input');
+      const summaryText = document.getElementById('summary-text');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const btnText = submitBtn.querySelector('.btn-text');
+      const mainCard = document.getElementById('main-card');
+      const summaryOutput = document.getElementById('summary-output');
+
+      /* ---------- Theme: load / save / apply ---------- */
+      const THEME_KEY = 'summarizer_theme_v1';
+      function applyTheme(theme){
+        root.setAttribute('data-theme', theme);
+        if(theme === 'light'){
+          themeIcon.textContent = '🌞';
+          themeLabel.textContent = 'Day';
+          themeToggle.setAttribute('aria-pressed','true');
+        } else {
+          themeIcon.textContent = '🌙';
+          themeLabel.textContent = 'Night';
+          themeToggle.setAttribute('aria-pressed','false');
+        }
+      }
+      function saveTheme(theme){ try { localStorage.setItem(THEME_KEY, theme); } catch(e){} }
+
+      // initial
+      const saved = (() => {
+        try { return localStorage.getItem(THEME_KEY); } catch(e){ return null; }
+      })();
+      const initialTheme = saved || 'dark';
+      applyTheme(initialTheme);
+
+      themeToggle.addEventListener('click', () => {
+        const current = root.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+        const next = current === 'light' ? 'dark' : 'light';
+        applyTheme(next);
+        saveTheme(next);
+      });
+      themeToggle.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); themeToggle.click(); } });
+      resetThemeBtn.addEventListener('click', () => { applyTheme('dark'); saveTheme('dark'); });
+
+      /* ---------- Sidebar show/hide ---------- */
+      let sidebarVisible = true;
+      toggleSidebarBtn.addEventListener('click', () => {
+        sidebarVisible = !sidebarVisible;
+        sidebar.classList.toggle('hidden', !sidebarVisible);
+        toggleSidebarBtn.textContent = sidebarVisible ? 'Hide' : 'Show';
+        toggleSidebarBtn.setAttribute('aria-pressed', String(sidebarVisible));
+      });
+
+      /* ---------- Button ripple animation ---------- */
+      submitBtn.addEventListener('click', function (e) {
+        const rect = submitBtn.getBoundingClientRect();
+        const ripple = document.createElement('span');
+        ripple.className = 'ripple';
+        const size = Math.max(rect.width, rect.height) * 1.4;
+        ripple.style.width = ripple.style.height = size + 'px';
+        ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
+        ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+        submitBtn.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 700);
+      });
+
+      /* ---------- Form submission (kept identical to previous contract) ---------- */
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const dialogue = textarea.value;
+
+        // UX: disable button and show spinner
+        submitBtn.disabled = true;
+        const spinner = document.createElement('span');
+        spinner.className = 'spinner';
+        submitBtn.prepend(spinner);
+        btnText.textContent = 'Summarizing...';
+        summaryText.textContent = '';
+        // gently show summary area
+        summaryOutput.style.opacity = '0.95';
+        summaryOutput.style.transform = 'translateY(6px)';
+
+        try {
+          const response = await fetch('/summarize/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dialogue })
+          });
+
+          if (!response.ok) {
+            let err = 'Server error: ' + response.status;
+            try { const j = await response.json(); if (j && j.error) err = j.error; } catch(_) {}
+            summaryText.textContent = err;
+          } else {
+            const data = await response.json();
+            summaryText.textContent = data.summary ?? '(No summary returned)';
+          }
+        } catch (err) {
+          summaryText.textContent = 'Network error: ' + (err.message || err);
+        } finally {
+          const sp = submitBtn.querySelector('.spinner');
+          if (sp) sp.remove();
+          submitBtn.disabled = false;
+          btnText.textContent = 'Summarize';
+
+          // animate summary appearance
+          requestAnimationFrame(() => {
+            summaryOutput.style.transition = 'transform .28s cubic-bezier(.2,.9,.3,1), opacity .28s ease';
+            summaryOutput.style.transform = 'translateY(0)';
+            summaryOutput.style.opacity = '1';
+          });
+          setTimeout(() => { summaryOutput.style.transition = ''; }, 360);
+        }
+      });
+
+      /* ---------- Keyboard shortcut: Ctrl/Cmd + Enter ---------- */
+      textarea.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          // trigger submit
+          form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      });
+
+      /* Accessibility: allow clicking ideas to copy suggested prompt text (optional) */
+      document.querySelectorAll('.idea').forEach((el) => {
+        el.addEventListener('click', () => {
+          const text = el.textContent.trim();
+          try {
+            navigator.clipboard?.writeText(text);
+            el.style.transform = 'translateY(-2px)';
+            setTimeout(() => el.style.transform = '', 450);
+          } catch (_) { /* ignore */ }
+        });
+      });
+
+    })();
+  </script>
+</body>
+</html>
